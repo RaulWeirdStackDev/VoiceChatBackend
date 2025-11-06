@@ -29,18 +29,13 @@ const wss = new WebSocketServer({ server, path: '/ws/chat' });
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-// Sistema prompt multiidioma
-const getSystemPrompt = (lang) => {
-  const prompts = {
-    'es-ES': `Eres Gemini, un asistente conversacional. Responde en ESPAÑOL en máximo 100 palabras. Sé claro, directo y conciso.`,
-    'en-US': `You are Gemini, a conversational assistant. Answer in ENGLISH in maximum 100 words. Be clear, direct and concise.`,
-    'fr-FR': `Tu es Gemini, un assistant conversationnel. Réponds en FRANÇAIS en maximum 100 mots. Sois clair, direct et concis.`,
-    'de-DE': `Du bist Gemini, ein Konversationsassistent. Antworte auf DEUTSCH in maximal 100 Wörtern. Sei klar, direkt und präzise.`,
-    'it-IT': `Sei Gemini, un assistente conversazionale. Rispondi in ITALIANO in massimo 100 parole. Sii chiaro, diretto e conciso.`,
-    'pt-BR': `Você é Gemini, um assistente conversacional. Responda em PORTUGUÊS em no máximo 100 palavras. Seja claro, direto e conciso.`,
-  };
-  return prompts[lang] || prompts['en-US'];
-};
+// Sistema prompt (definido en servidor, no viaja por red)
+const SYSTEM_PROMPT = `Eres Gemini, un asistente conversacional.
+Responde exactamente a lo que el usuario pide en máximo 100 palabras.
+- Sé claro, directo y conciso.
+- No agregues información extra ni comentarios personales.
+- Mantén coherencia y buena gramática.
+- Termina la respuesta siempre con una oración completa.`;
 
 wss.on('connection', (ws) => {
   console.log('🔌 Cliente conectado');
@@ -50,9 +45,8 @@ wss.on('connection', (ws) => {
       const { transcript, lang } = JSON.parse(data.toString());
       console.log(`📝 Transcripción recibida (${lang}):`, transcript);
 
-      // Construir prompt en el idioma correcto
-      const systemPrompt = getSystemPrompt(lang);
-      const fullPrompt = `${systemPrompt}\n\nUser: "${transcript}"\nAnswer:`;
+      // Construir prompt completo en el servidor
+      const fullPrompt = `${SYSTEM_PROMPT}\n\nUsuario: "${transcript}"\nRespuesta:`;
 
       // Generar respuesta con streaming
       const result = await model.generateContentStream(fullPrompt);
